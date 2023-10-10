@@ -6,6 +6,38 @@
 
 namespace py = pybind11;
 
+void maximum_path_one(float *values_ptr, float *path_ptr, int t_x, int t_y, int max_t_y) {
+    // Convert ptrs to 2D array
+    float (*values)[max_t_y] = (float (*)[max_t_y]) values_ptr;
+    float (*path)[max_t_y] = (float (*)[max_t_y]) path_ptr;
+
+    for(int y = 1; y < t_y; y++) {
+        values[0][y] += values[0][y - 1];
+    }
+
+    // Cannot start from x other than 0 (because path starts from 0, 0), so fill with negative infinity
+    for(int x = 1; x < t_x; x++) {
+        values[x][0] = -std::numeric_limits<float>::infinity();
+    }
+
+    for(int x = 1; x < t_x; x++) {
+        for(int y = 1; y < t_y; y++) {
+            values[x][y] += std::max(values[x - 1][y - 1], values[x][y - 1]);
+        }
+    }
+
+    // Restore path
+    int x = t_x - 1;
+    for(int y = t_y - 1; y >= 0; y--) {
+        path[x][y] = 1.0f;
+        if(x > 0 && y > 0) {
+            if(values[x - 1][y - 1] > values[x][y - 1]) {
+                x--;
+            }
+        }
+    }
+}
+
 pybind11::array_t<float> maximum_path(
     pybind11::array_t<float, py::array::c_style | py::array::forcecast> values,
     pybind11::array_t<int, py::array::c_style | py::array::forcecast> t_x,
@@ -58,32 +90,13 @@ pybind11::array_t<float> maximum_path(
 
     for(int bid = 0; bid < batch_size; bid++) {
         // Compute maximum path
-
-        for(int y = 1; y < ptr_t_y[bid]; y++) {
-            arr_values[bid][0][y] += arr_values[bid][0][y - 1];
-        }
-
-        // Cannot start from x other than 0 (because path starts from 0, 0), so fill with negative infinity
-        for(int x = 1; x < ptr_t_x[bid]; x++) {
-            arr_values[bid][x][0] = -std::numeric_limits<float>::infinity();
-        }
-
-        for(int x = 1; x < ptr_t_x[bid]; x++) {
-            for(int y = 1; y < ptr_t_y[bid]; y++) {
-                arr_values[bid][x][y] += std::max(arr_values[bid][x - 1][y - 1], arr_values[bid][x][y - 1]);
-            }
-        }
-
-        // Restore path
-        int x = ptr_t_x[bid] - 1;
-        for(int y = ptr_t_y[bid] - 1; y >= 0; y--) {
-            arr_path[bid][x][y] = 1.0f;
-            if(x > 0 && y > 0) {
-                if(arr_values[bid][x - 1][y - 1] > arr_values[bid][x][y - 1]) {
-                    x--;
-                }
-            }
-        }
+        maximum_path_one(
+            ptr_values + bid * max_t_x * max_t_y,
+            ptr_path + bid * max_t_x * max_t_y,
+            ptr_t_x[bid],
+            ptr_t_y[bid],
+            max_t_y
+        );
     }
     
     delete[] values_clone;
