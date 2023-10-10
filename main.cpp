@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <thread>
 
 namespace py = pybind11;
 
@@ -88,9 +89,12 @@ pybind11::array_t<float> maximum_path(
     // Convert path to 3D array
     float (*arr_path)[max_t_x][max_t_y] = (float (*)[max_t_x][max_t_y]) ptr_path;
 
+    std::thread *threads = new std::thread[batch_size];
+
     for(int bid = 0; bid < batch_size; bid++) {
         // Compute maximum path
-        maximum_path_one(
+        threads[bid] = std::thread(
+            maximum_path_one,
             ptr_values + bid * max_t_x * max_t_y,
             ptr_path + bid * max_t_x * max_t_y,
             ptr_t_x[bid],
@@ -98,8 +102,13 @@ pybind11::array_t<float> maximum_path(
             max_t_y
         );
     }
+
+    for(int bid = 0; bid < batch_size; bid++) {
+        threads[bid].join();
+    }
     
     delete[] values_clone;
+    delete[] threads;
 
     return path;
 }
