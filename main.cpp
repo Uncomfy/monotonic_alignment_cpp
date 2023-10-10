@@ -39,10 +39,11 @@ void maximum_path_one(float *values_ptr, float *path_ptr, int t_x, int t_y, int 
     }
 }
 
-pybind11::array_t<float> maximum_path(
+void maximum_path(
     pybind11::array_t<float, py::array::c_style | py::array::forcecast> values,
     pybind11::array_t<int, py::array::c_style | py::array::forcecast> t_x,
-    pybind11::array_t<int, py::array::c_style | py::array::forcecast> t_y
+    pybind11::array_t<int, py::array::c_style | py::array::forcecast> t_y,
+    pybind11::array_t<float, py::array::c_style> path
 ) {
     auto buf_values = values.request();
     float *ptr_values = (float *) buf_values.ptr;
@@ -53,9 +54,17 @@ pybind11::array_t<float> maximum_path(
     auto buf_t_y = t_y.request();
     int *ptr_t_y = (int *) buf_t_y.ptr;
 
+    auto buf_path = path.request();
+    float *ptr_path = (float *) buf_path.ptr;
+
     assert(buf_values.ndim == 3);
+    assert(buf_path.ndim == 3);
     assert(buf_t_x.ndim == 1);
     assert(buf_t_y.ndim == 1);
+
+    assert(buf_values.shape[0] == buf_path.shape[0]);
+    assert(buf_values.shape[1] == buf_path.shape[1]);
+    assert(buf_values.shape[2] == buf_path.shape[2]);
 
     int batch_size = buf_values.shape[0];
     int max_t_x = buf_values.shape[1];
@@ -68,26 +77,6 @@ pybind11::array_t<float> maximum_path(
         assert(ptr_t_x[i] <= max_t_x);
         assert(ptr_t_y[i] <= max_t_y);
     }
-
-    // Clone the values into new float array
-    float *values_clone = new float[buf_values.size];
-    std::copy(ptr_values, ptr_values + buf_values.size, values_clone);
-
-    // Convert values to 3D array
-    float (*arr_values)[max_t_x][max_t_y] = (float (*)[max_t_x][max_t_y]) values_clone;
-
-    // Create output array
-    py::array_t<float> path = py::array_t<float>(buf_values.size);
-    // Set shape of output array
-    path.resize({batch_size, max_t_x, max_t_y});
-    auto buf_path = path.request();
-    float *ptr_path = (float *) buf_path.ptr;
-
-    // Fill with zeros
-    std::fill(ptr_path, ptr_path + buf_path.size, 0.0f);
-
-    // Convert path to 3D array
-    float (*arr_path)[max_t_x][max_t_y] = (float (*)[max_t_x][max_t_y]) ptr_path;
 
     std::thread *threads = new std::thread[batch_size];
 
@@ -107,10 +96,7 @@ pybind11::array_t<float> maximum_path(
         threads[bid].join();
     }
     
-    delete[] values_clone;
     delete[] threads;
-
-    return path;
 }
 
 PYBIND11_MODULE(monotonic_alignment_cpp, m) {
@@ -123,7 +109,7 @@ PYBIND11_MODULE(monotonic_alignment_cpp, m) {
         py::arg("values"),
         py::arg("t_x"),
         py::arg("t_y"),
-        py::return_value_policy::move,
+        py::arg("path"),
         R"pbdoc(
             A function that finds a maximum path in a batch of values
 
@@ -131,9 +117,7 @@ PYBIND11_MODULE(monotonic_alignment_cpp, m) {
                 values (np.ndarray): A batch of values
                 t_x (np.ndarray): A batch of x coordinates of the last point in the path
                 t_y (np.ndarray): A batch of y coordinates of the last point in the path
-
-            Returns:
-                np.ndarray: A batch of paths
+                path (np.ndarray): A batch of paths to store output in
         )pbdoc"
     );
 }

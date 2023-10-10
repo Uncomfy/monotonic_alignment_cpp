@@ -3,8 +3,9 @@ import numpy as np
 import time
 
 np.set_printoptions(precision=3, suppress=True)
+np.random.seed(42)
 
-batch_size = 32
+batch_size = 64
 
 t_x = np.random.randint(200,400, size=(batch_size,))
 t_y_multipliers = np.random.uniform(1.5, 3.0, size=(batch_size,))
@@ -25,8 +26,11 @@ mask = np.matmul(x_mask.reshape(batch_size, max_t_x, 1), y_mask.reshape(batch_si
 def maximum_path_cpp_wrapper(batch, mask):
     t_x = mask[:, :, 0].sum(axis=1)
     t_y = mask[:, 0, :].sum(axis=1)
+    path = np.zeros_like(batch, dtype=np.float32)
 
-    return monotonic_alignment_cpp.maximum_path(batch, t_x, t_y)
+    monotonic_alignment_cpp.maximum_path(batch, t_x, t_y, path)
+
+    return path
 
 def maximum_path_numpy(value, mask, max_neg_val=None):
     """
