@@ -1,5 +1,5 @@
 # Installation
 ```bash
 pip install -r requirements.txt
-pip install .
+CPPFLAGS="-fopenmp" pip install .
 ```

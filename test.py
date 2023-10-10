@@ -5,6 +5,11 @@ import time
 np.set_printoptions(precision=3, suppress=True)
 np.random.seed(42)
 
+if monotonic_alignment_cpp.check_openmp():
+    print("OpenMP is available")
+else:
+    print("OpenMP is not available")
+
 batch_size = 64
 
 t_x = np.random.randint(200,400, size=(batch_size,))

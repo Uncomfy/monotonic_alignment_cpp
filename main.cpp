@@ -78,12 +78,10 @@ void maximum_path(
         assert(ptr_t_y[i] <= max_t_y);
     }
 
-    std::thread *threads = new std::thread[batch_size];
-
+    #pragma omp parallel for
     for(int bid = 0; bid < batch_size; bid++) {
         // Compute maximum path
-        threads[bid] = std::thread(
-            maximum_path_one,
+        maximum_path_one(
             ptr_values + bid * max_t_x * max_t_y,
             ptr_path + bid * max_t_x * max_t_y,
             ptr_t_x[bid],
@@ -91,12 +89,14 @@ void maximum_path(
             max_t_y
         );
     }
+}
 
-    for(int bid = 0; bid < batch_size; bid++) {
-        threads[bid].join();
-    }
-    
-    delete[] threads;
+bool check_openmp() {
+    # ifdef _OPENMP
+        return true;
+    # else
+        return false;
+    # endif
 }
 
 PYBIND11_MODULE(monotonic_alignment_cpp, m) {
@@ -119,5 +119,11 @@ PYBIND11_MODULE(monotonic_alignment_cpp, m) {
                 t_y (np.ndarray): A batch of y coordinates of the last point in the path
                 path (np.ndarray): A batch of paths to store output in
         )pbdoc"
+    );
+
+    m.def(
+        "check_openmp",
+        &check_openmp,
+        "A function that checks if OpenMP is enabled"
     );
 }
