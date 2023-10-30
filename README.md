@@ -2,6 +2,5 @@ Reference NumPy implementation in `test.py` from [Coqui TTS](https://github.com/
 
 # Installation
 ```bash
-pip install -r requirements.txt
-CPPFLAGS="-fopenmp" pip install .
+pip install .
 ```
