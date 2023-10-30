@@ -11,3 +11,5 @@ git clone https://github.com/Uncomfy/monotonic_alignment_cpp
 cd monotonic_alignment_cpp
 pip install .
 ```
+
+Please run `test.py` after installation to verify if OpenMP is available and everything works.
